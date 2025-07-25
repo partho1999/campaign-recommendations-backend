@@ -12,6 +12,7 @@ from api.utills.utills import load_model, preprocess, map_clusters_to_recommenda
 from django.conf import settings
 from threading import Lock
 from api.serializers import CampaignSerializer
+import json
 
 # Global state tracker for cycling state 0-7
 if not hasattr(settings, 'CAMPAIGN_STATE'):  # Only add if not present
@@ -25,8 +26,8 @@ class PredictCampaignsView(APIView):
             scaler, dbscan, features = load_model()
 
             # Extract parameters
-            api_key = request.GET.get('api_key', 'c1da605a864e6c74beb71d3a713e019c')
-            base_url = request.GET.get('base_url', 'https://tracktheweb.online')
+            api_key = 'c1da605a864e6c74beb71d3a713e019c'
+            base_url = "https://tracktheweb.online/admin_api/v1"
             hours_back = int(request.GET.get('hours_back', 24))
 
             time_ranges = [hours_back]
@@ -38,19 +39,25 @@ class PredictCampaignsView(APIView):
 
                 payload = {
                     "range": {
-                        "from": start_date.strftime("%Y-%m-%d %H:%M:%S"),
-                        "to": end_date.strftime("%Y-%m-%d %H:%M:%S"),
+                        "from": start_date.strftime("%Y-%m-%d"),
+                        "to": end_date.strftime("%Y-%m-%d"),
                         "timezone": "Europe/Amsterdam"
                     },
-                    "columns": [
-                        "sub_id_3", "campaign", "campaign_id", "cost", "revenue", "profit",
+                    "columns":  [
+                        "campaign", "campaign_id", "cost", "revenue", "profit",
                         "clicks", "campaign_unique_clicks", "conversions", "roi_confirmed",
                         "datetime", "lp_clicks", "cr", "lp_ctr"
                     ],
                     "metrics": [
-                        "clicks", "cost", "campaign_unique_clicks", "conversions", "roi_confirmed"
+                        "clicks",
+                        "cost",
+                        "campaign_unique_clicks",
+                        "conversions",
+                        "roi_confirmed"
                     ],
-                    "grouping": ["campaign_id"],
+                    "grouping": [
+                        "campaign_id"
+                    ],
                     "filters": [],
                     "summary": False,
                     "limit": 100000,
@@ -64,14 +71,21 @@ class PredictCampaignsView(APIView):
                 }
 
                 response = requests.post(
-                    f"{base_url}/admin_api/v1/report/build",
+                    f"{base_url}/report/build",
                     headers=headers,
                     json=payload,
                     timeout=30
                 )
                 response.raise_for_status()
                 data = response.json()
+                print(data)
+
+                with open('api_response.json', 'w') as f:
+                    json.dump(data, f, indent=4)  
+
                 rows = data.get('rows', [])
+                print("rows:", rows)
+                
 
                 if not rows:
                     continue
@@ -82,6 +96,12 @@ class PredictCampaignsView(APIView):
                 # print(f"Unique campaign_id values: {unique_campaign_ids}")
 
                 df = pd.DataFrame(rows)
+                # Convert the 'datetime' column to actual datetime objects
+                df['datetime'] = pd.to_datetime(df['datetime'])
+
+                # Sort by campaign_id and datetime descending (so latest is at top)
+                df = df.sort_values(by=['campaign_id', 'datetime'])
+                df.to_csv("row_table.csv")
 
                 required_cols = [
                     'campaign_id', 'campaign', 'cost', 'revenue', 'profit',
@@ -92,8 +112,27 @@ class PredictCampaignsView(APIView):
                     if col not in df.columns:
                         df[col] = 0
 
-                # Keep only the last occurrence of each campaign_id in the DataFrame
-                df = df.drop_duplicates(subset='campaign_id', keep='last').reset_index(drop=True)
+                def get_closest_to_1_hour_before(group):
+                    latest_time = group['datetime'].max()
+                    target_time = latest_time - timedelta(hours=1)
+
+                    # Calculate the absolute time difference from the target time
+                    group['time_diff'] = (group['datetime'] - target_time).abs()
+                    
+                    # Return the row with the smallest difference
+                    return group.loc[group['time_diff'].idxmin()]
+
+                
+                # Apply the function to each group
+                df = df.groupby('campaign_id', group_keys=False).apply(get_closest_to_1_hour_before)
+
+                # Drop helper column
+                df = df.drop(columns=['time_diff'])
+
+                # Optional: sort by datetime or campaign
+                df = df.sort_values(by='datetime').reset_index(drop=True)
+
+                df.to_csv("unique_table.csv")
 
 
                 if df.empty:

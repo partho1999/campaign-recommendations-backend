@@ -1,0 +1,14 @@
+,campaign_id,campaign,datetime,cost,revenue,profit,clicks,campaign_unique_clicks,conversions,roi_confirmed,lp_clicks,cr,lp_ctr,conversion_rate,roi,cpc,profit_margin
+0,402,WIJTE,2025-07-25 11:09:42,0.0,0.0,0.0,1,1,0,0.0,0,0.0,0.0,0,0,0,0
+1,434,Facebook.com - Sweeps - SOI - Milwaukee - SE - UA80 - BM1 - Acc 1,2025-07-25 12:09:53,0.5214,0.0,-0.52,2,1,0,-100.0,0,0.0,0.0,0,0,0,0
+2,458,Facebook.com - Sweeps - SOI - Rituals - DE - UA85 - BM1 - Acc 1,2025-07-25 12:16:40,0.46,0.0,-0.46,1,1,0,-100.0,0,0.0,0.0,0,0,0,0
+3,210,Facebook.com - Sweeps - SOI - Dove - UK - UA25 - BM1 - Acc 3,2025-07-25 12:19:03,0.1789,0.0,-0.18,1,0,0,-100.0,0,0.0,0.0,0,0,0,0
+4,454,Facebook.com - Sweeps - SOI - Lenor - DE - UA78 - BM1 - Acc 1,2025-07-25 12:20:54,0.1419,0.0,-0.14,1,0,0,-100.0,0,0.0,0.0,0,0,0,0
+5,415,Facebook.com - Sweeps - SOI - Gillette - DE - UA50 - BM2 - Acc 1,2025-07-25 12:22:58,0.538,0.0,-0.54,1,1,0,-100.0,1,0.0,100.0,0,0,0,0
+6,409,Facebook.com - Sweeps - SOI - Malediven - SE - UA61 - BM1 - Acc 4,2025-07-25 12:23:04,0.3306,2.7,2.37,1,1,1,716.76,1,100.0,100.0,0,0,0,0
+7,425,Facebook.com - Sweeps - SOI - Action - DE - UA18 - BM1 - Acc 2,2025-07-25 12:24:47,0.0,0.0,0.0,1,0,0,0.0,0,0.0,0.0,0,0,0,0
+8,308,Facebook.com - Sweeps - SOI - Marabou - SE - UA68 - BM1 - Acc 2,2025-07-25 12:25:09,0.3042,0.0,-0.3,1,1,0,-100.0,0,0.0,0.0,0,0,0,0
+9,426,Facebook.com - Sweeps - SOI - Makita - DE - UA83 - BM1 - Acc 1,2025-07-25 12:25:32,0.8735,0.0,-0.87,2,2,0,-100.0,2,0.0,100.0,0,0,0,0
+10,406,Facebook.com - Sweeps - SOI - Douglas - IT - UA18 - BM1 - Acc 6,2025-07-25 12:25:46,0.1852,0.0,-0.19,1,1,0,-100.0,0,0.0,0.0,0,0,0,0
+11,457,Facebook.com - Sweeps - SOI - Lenor - UK - UA25 - BM1 - Acc 3,2025-07-25 12:26:17,0.2089,0.0,-0.21,1,1,0,-100.0,0,0.0,0.0,0,0,0,0
+12,391,Facebook.com - Sweeps - SOI - Aldi - Tester - US - UA64 - BM1 - Acc 3,2025-07-25 12:34:50,0.1963,0.0,-0.2,1,1,0,-100.0,1,0.0,100.0,0,0,0,0
