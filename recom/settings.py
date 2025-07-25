@@ -93,7 +93,7 @@ DATABASES = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "https://campaign-recommendations-fontend-j5yf2am8u.vercel.app",
+    "https://campaign-recommendations-fontend.vercel.app",
 ]
 
 # CORS_ALLOW_ALL_ORIGINS = True
