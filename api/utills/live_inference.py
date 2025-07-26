@@ -203,10 +203,10 @@ class DBSCANCampaignInference:
         df_result = self.generate_recommendations(df_processed, labels)
         self.analyze_recommendations(df_result)
         
-        # if save_results:
-        #     return self.save_results(df_result)
-        # else:
-        #     return None, None
+        if save_results:
+            return self.save_results(df_result)
+        else:
+            return None, None
 
 
 def main():
