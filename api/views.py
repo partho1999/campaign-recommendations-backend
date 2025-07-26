@@ -7,12 +7,15 @@ import pandas as pd
 import numpy as np
 from django.utils import timezone
 from scipy.stats import linregress
-from api.models import Campaign
+from api.models import Campaign, CampaignAd
 from api.utills.utills import load_model, preprocess, map_clusters_to_recommendations
 from django.conf import settings
 from threading import Lock
 from api.serializers import CampaignSerializer
+from api.utills.live_inference import main
 import json
+from collections import defaultdict
+from datetime import datetime
 
 # Global state tracker for cycling state 0-7
 if not hasattr(settings, 'CAMPAIGN_STATE'):  # Only add if not present
@@ -56,7 +59,10 @@ class PredictCampaignsView(APIView):
                         "roi_confirmed"
                     ],
                     "grouping": [
-                        "campaign_id"
+                        "sub_id_6",
+                        "sub_id_5",
+                        "sub_id_3",
+                        "sub_id_2"
                     ],
                     "filters": [],
                     "summary": False,
@@ -78,13 +84,13 @@ class PredictCampaignsView(APIView):
                 )
                 response.raise_for_status()
                 data = response.json()
-                print(data)
+                # print(data)
 
                 with open('api_response.json', 'w') as f:
                     json.dump(data, f, indent=4)  
 
                 rows = data.get('rows', [])
-                print("rows:", rows)
+                # print("rows:", rows)
                 
 
                 if not rows:
@@ -96,128 +102,101 @@ class PredictCampaignsView(APIView):
                 # print(f"Unique campaign_id values: {unique_campaign_ids}")
 
                 df = pd.DataFrame(rows)
-                # Convert the 'datetime' column to actual datetime objects
+
+                # Function to detect empty strings or placeholders like {{campaign.name}}
+                def is_empty_or_placeholder(val):
+                    if pd.isna(val):
+                        return True
+                    if isinstance(val, str) and (val.strip() == "" or val.strip().startswith("{{")):
+                        return True
+                    return False
+
+                # Replace those with pd.NA
+                df = df.applymap(lambda x: pd.NA if is_empty_or_placeholder(x) else x)
+
+                # Drop sub_id_2 and sub_id_3 if all values are NA
+                for col in ['sub_id_2', 'sub_id_3']:
+                    if col in df.columns and df[col].isna().all():
+                        df.drop(columns=col, inplace=True)
+
+                # Drop rows where all of sub_id_6, sub_id_5, sub_id_3, sub_id_2 are empty
+                cols_to_check = ['sub_id_6', 'sub_id_5', 'sub_id_3', 'sub_id_2']
+                cols_existing = [col for col in cols_to_check if col in df.columns]
+                df = df.dropna(subset=cols_existing, how='all')
+
+                # Convert the 'datetime' column to datetime
                 df['datetime'] = pd.to_datetime(df['datetime'])
 
-                # Sort by campaign_id and datetime descending (so latest is at top)
-                df = df.sort_values(by=['campaign_id', 'datetime'])
-                df.to_csv("row_table.csv")
+                # Sort the DataFrame
+                df = df.sort_values(by=['sub_id_2' if 'sub_id_2' in df.columns else 'campaign_id', 'datetime'])
 
-                required_cols = [
-                    'campaign_id', 'campaign', 'cost', 'revenue', 'profit',
-                    'clicks', 'conversions', 'conversion_rate', 'roi',
-                    'cpc', 'profit_margin'
-                ]
-                for col in required_cols:
-                    if col not in df.columns:
-                        df[col] = 0
+                if 'sub_id_2' in df.columns:
+                    df = df.sort_values(by='datetime', ascending=False)  # latest datetime first
+                    df = df.drop_duplicates(subset='sub_id_2', keep='first')
 
-                def get_closest_to_1_hour_before(group):
-                    latest_time = group['datetime'].max()
-                    target_time = latest_time - timedelta(hours=1)
+                # Save to CSV
+                df.to_csv("media/row_data.csv", index=False)
+                df.to_json("media/preprocess_data.json", orient='records', indent=2)
 
-                    # Calculate the absolute time difference from the target time
-                    group['time_diff'] = (group['datetime'] - target_time).abs()
-                    
-                    # Return the row with the smallest difference
-                    return group.loc[group['time_diff'].idxmin()]
+                data = main()
 
-                
-                # Apply the function to each group
-                df = df.groupby('campaign_id', group_keys=False).apply(get_closest_to_1_hour_before)
+                for item in data:
+                    try:
+                        fb_adset_id = item.get('sub_id_2')
+                        if fb_adset_id is None or not str(fb_adset_id).isdigit():
+                            continue  # skip invalid adsets
 
-                # Drop helper column
-                df = df.drop(columns=['time_diff'])
+                        fb_adset_id = int(fb_adset_id)
+                        timestamp_ms = item.get('datetime')
+                        timestamp = datetime.fromtimestamp(timestamp_ms / 1000.0)
 
-                # Optional: sort by datetime or campaign
-                df = df.sort_values(by='datetime').reset_index(drop=True)
+                        CampaignAd.objects.create(
+                            fb_campaign_id=item.get('campaign_id', 0),
+                            fb_adset_id=fb_adset_id,
+                            fb_campaign_name=item.get('campaign', ''),
+                            cost=item.get('cost', 0.0),
+                            revenue=item.get('revenue', 0.0),
+                            profit=item.get('profit', 0.0),
+                            clicks=item.get('clicks', 0),
+                            campaign_unique_clicks=item.get('campaign_unique_clicks', 0),
+                            conversions=item.get('conversions', 0),
+                            roi_confirmed=item.get('roi_confirmed', 0.0),
+                            timestamp=timestamp,
+                            lp_clicks=item.get('lp_clicks', 0),
+                            cr=item.get('cr', 0.0),
+                            lp_ctr=item.get('lp_ctr', 0.0),
+                            sub_id_2=str(item.get('sub_id_2', '')),
+                            sub_id_3=str(item.get('sub_id_3', '')),
+                            sub_id_5=str(item.get('sub_id_5', '')),
+                            sub_id_6=str(item.get('sub_id_6', '')),
+                            log_revenue=item.get('revenue_to_cost_ratio', 0.0),  # remapped
+                            log_cr=item.get('conversion_rate', 0.0),              # remapped
+                            cluster=item.get('cluster', -1),
+                            recommendation=item.get('recommendation', ''),
+                            reason=item.get('reason', ''),
+                            urgency=item.get('urgency', ''),
+                            priority=str(item.get('priority', ''))
+                        )
 
-                df.to_csv("unique_table.csv")
+                    except Exception as e:
+                        print(f"[ERROR] Creating campaign ad failed: {e}")
 
+                grouped = defaultdict(list)
 
-                if df.empty:
-                    continue  # ✅ All data already processed
+                for item in data:
+                    key = (item['sub_id_6'], item['sub_id_3'])
+                    grouped[key].append(item)
 
-                # Increment and cycle state 0-7 ONCE per request
-                with settings.CAMPAIGN_STATE_LOCK:
-                    state = settings.CAMPAIGN_STATE
-                    settings.CAMPAIGN_STATE = (settings.CAMPAIGN_STATE + 1) % 8
-
-                df = preprocess(df, features)
-                X = df[features].copy()
-                X = scaler.transform(X)
-                cluster_labels = dbscan.fit_predict(X)
-                recommendations = map_clusters_to_recommendations(df, cluster_labels)
-
+                # Convert to desired output format
                 output = []
-                for i, row in df.iterrows():
-                    campaign_id = row.get('campaign_id', f'campaign_{i}')
-                    campaign_name = row.get('campaign', f'campaign_{i}')
-                    cluster = int(cluster_labels[i])
-                    recommendation = recommendations[i]
-                    timestamp = datetime.now()
-
-                    Campaign.objects.create(
-                        campaign_id=campaign_id,
-                        campaign_name=campaign_name,
-                        cluster=cluster,
-                        recommendation=recommendation,
-                        cost=row['cost'],
-                        revenue=row['revenue'],
-                        profit=row['profit'],
-                        clicks=row['clicks'],
-                        conversions=row['conversions'],
-                        conversion_rate=row['conversion_rate'],
-                        roi=row['roi'],
-                        cpc=row['cpc'],
-                        profit_margin=row['profit_margin'],
-                        timestamp=timestamp,
-                        state=state
-                    )
-
+                for (sub_id_6, sub_id_3), items in grouped.items():
                     output.append({
-                        'campaign_id': campaign_id,
-                        'campaign_name': campaign_name,
-                        'cluster': cluster,
-                        'recommendation': recommendation,
-                        'metrics': {
-                            'cost': row['cost'],
-                            'revenue': row['revenue'],
-                            'profit': row['profit'],
-                            'clicks': row['clicks'],
-                            'conversions': row['conversions'],
-                            'conversion_rate': row['conversion_rate'],
-                            'roi': row['roi'],
-                            'cpc': row['cpc'],
-                            'datetime': row['datetime'],
-                            'profit_margin': row['profit_margin']
-                        },
-                        'timestamp': timestamp.isoformat(),
-                        'state': state
+                        "sub_id_6": sub_id_6,
+                        "sub_id_3": sub_id_3,
+                        "adset": items
                     })
 
-                rec_counts = {}
-                for rec in recommendations:
-                    key = rec.strip().upper()
-                    rec_counts[key] = rec_counts.get(key, 0) + 1
-
-                summary = {
-                    'total_campaigns': len(output),
-                    'recommendation_counts': rec_counts,
-                    'date_range': {
-                        'from': start_date.strftime("%Y-%m-%d %H:%M:%S"),
-                        'to': end_date.strftime("%Y-%m-%d %H:%M:%S")
-                    },
-                    'timestamp': datetime.now().isoformat()
-                }
-
-                final_output.append({
-                    'range': f'{time_range}h',
-                    'recommendations': output,
-                    'summary': summary
-                })
-
-            return Response({'success': True, 'data': final_output}, status=status.HTTP_200_OK)
+            return Response({'success': True, 'data': output}, status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({'success': False, 'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -12,7 +12,7 @@ rows = data["rows"]
 headers = rows[0].keys()
 
 # Write to CSV file
-with open('campaign_data_1.csv', 'w', newline='', encoding='utf-8') as csv_file:
+with open('campaign_data.csv', 'w', newline='', encoding='utf-8') as csv_file:
     writer = csv.DictWriter(csv_file, fieldnames=headers)
     writer.writeheader()       # write headers
     writer.writerows(rows)     # write all rows
