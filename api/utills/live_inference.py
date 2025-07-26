@@ -4,6 +4,7 @@ import numpy as np
 import joblib
 import json
 import django
+from django.conf import settings
 from datetime import datetime
 import warnings
 warnings.filterwarnings('ignore')
@@ -210,13 +211,13 @@ class DBSCANCampaignInference:
 
 def main():
     """Main function to run inference"""
-    model_path = r'media\dbscan_model_bundle_latest.pkl'
+    model_path = os.path.join(settings.MEDIA_ROOT, 'dbscan_model_bundle_latest.pkl')
     if not os.path.exists(model_path):
         print(f"❌ Model file not found: {model_path}")
         print("Please run the DBSCAN trainer first to generate the model.")
         return
 
-    data_path = r'media\preprocess_data.json'
+    data_path =os.path.join(settings.MEDIA_ROOT, 'preprocess_data.json')
     if not os.path.exists(data_path):
         print(f"❌ Data file not found: {data_path}")
         print("Please run the downloader script first to generate the data.")
