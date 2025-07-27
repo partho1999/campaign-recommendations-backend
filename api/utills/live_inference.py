@@ -95,23 +95,23 @@ class DBSCANCampaignInference:
             # Real-time recommendation logic
             if cluster == -1:  # Noise/Outliers
                 if roi > 50:
-                    return "MONITOR_CLOSELY", "Outlier with high ROI - monitor for scaling", 2
+                    return "INCRESE BUDGET", "Outlier with high ROI - monitor for scaling", 2
                 elif roi > 0:
-                    return "MONITOR", "Outlier with positive ROI - watch performance", 6
+                    return "INCRESE BUDGET", "Outlier with positive ROI - watch performance", 6
                 else:
                     return "PAUSE_IMMEDIATELY", "Outlier with poor performance - stop spending", 1
             elif cluster in [4, 5]:  # High performance clusters (ROI > 1000%)
                 if cost > 0 and roi > 500:
-                    return "SCALE_UP_AGGRESSIVE", "Exceptional performance - increase budget 200%", 1
+                    return "INCRESE_BUDGET_AGGRESSIVE", "Exceptional performance - increase budget 200%", 1
                 else:
-                    return "SCALE_UP", "High performance - increase budget 50%", 2
+                    return "INCRESE_BUDGET_AGGRESSIVE", "High performance - increase budget 50%", 2
             elif cluster == 0:  # Medium performance (ROI ~-35%)
                 if clicks > 100 and roi > -20:
                     return "OPTIMIZE_TARGETING", "Good traffic, optimize for better conversion", 4
                 elif cost < 50:
                     return "TEST_SCALING", "Low cost campaign - test small budget increase", 5
                 else:
-                    return "REDUCE_BUDGET", "Underperforming - reduce budget by 30%", 3
+                    return "REDUCE_BUDGET", "Underperforming", 3
             elif cluster == 1:  # Lower medium performance (ROI ~-67%)
                 if clicks > 50:
                     return "OPTIMIZE_CREATIVE", "Traffic available - test new creatives", 4
@@ -165,9 +165,9 @@ class DBSCANCampaignInference:
     
     def save_results(self, df_result, output_prefix='inference_results'):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        csv_path = f"{output_prefix}_{timestamp}.csv"
+        csv_path = f"{output_prefix}.csv"
         df_result.to_csv(csv_path, index=False)
-        json_path = f"{output_prefix}_{timestamp}.json"
+        json_path = f"{output_prefix}.json"
         df_result.to_json(json_path, orient='records', indent=2)
         
         print(f"\n💾 Results saved:")

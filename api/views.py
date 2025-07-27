@@ -16,6 +16,7 @@ from api.utills.live_inference import main
 import json
 from collections import defaultdict
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 # Global state tracker for cycling state 0-7
 if not hasattr(settings, 'CAMPAIGN_STATE'):  # Only add if not present
@@ -34,10 +35,12 @@ class PredictCampaignsView(APIView):
             hours_back = int(request.GET.get('hours_back', 24))
 
             time_ranges = [hours_back]
-            final_output = []
+            # final_output = []
+            all_data_items = []
 
             for time_range in time_ranges:
-                end_date = datetime.now()
+                now_amsterdam = datetime.now(ZoneInfo("Europe/Amsterdam"))
+                end_date = now_amsterdam
                 start_date = end_date - timedelta(hours=time_range)
 
                 payload = {
@@ -181,6 +184,7 @@ class PredictCampaignsView(APIView):
                     except Exception as e:
                         print(f"[ERROR] Creating campaign ad failed: {e}")
 
+                all_data_items.extend(data)
                 grouped = defaultdict(list)
 
                 for item in data:
@@ -196,7 +200,32 @@ class PredictCampaignsView(APIView):
                         "adset": items
                     })
 
-            return Response({'success': True, 'data': output}, status=status.HTTP_200_OK)
+                # Calculate summary
+                summary_data = pd.DataFrame(all_data_items)
+                if not summary_data.empty:
+                    total_cost = summary_data['cost'].sum()
+                    total_revenue = summary_data['revenue'].sum()
+                    total_profit = summary_data['profit'].sum()
+                    total_clicks = summary_data['clicks'].sum()
+                    total_conversions = summary_data['conversions'].sum()
+                    avg_roi = summary_data['roi_confirmed'].mean()
+                    avg_cr = summary_data['conversion_rate'].mean()
+                    priority_dist = summary_data['priority'].astype(str).value_counts().to_dict()
+
+                    summary = {
+                        "total_cost": round(total_cost, 2),
+                        "total_revenue": round(total_revenue, 2),
+                        "total_profit": round(total_profit, 2),
+                        "total_clicks": int(total_clicks),
+                        "total_conversions": int(total_conversions),
+                        "average_roi": round(avg_roi, 4),
+                        "average_conversion_rate": round(avg_cr, 4),
+                        "priority_distribution": priority_dist
+                    }
+                else:
+                    summary = {}
+
+            return Response({'success': True, 'data': output, 'summary': summary}, status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({'success': False, 'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
