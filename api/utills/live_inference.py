@@ -97,7 +97,7 @@ class DBSCANCampaignInference:
             # Cluster -1: Noise/Outliers
             if cluster == -1:  # Noise
                 if roi > 0:
-                    return "MONITOR", "Outlier with positive ROI - monitor closely"
+                    return "INCREASE_BUDGET", "Outlier with positive ROI - monitor closely"
                 else:
                     return "PAUSE", "Outlier with poor performance - pause campaign"
             elif cluster in [4, 5]:  # High performance clusters
