@@ -101,7 +101,7 @@ class DBSCANCampaignInference:
                 else:
                     return "PAUSE", "Outlier with poor performance - pause campaign"
             elif cluster in [4, 5]:  # High performance clusters
-                return "SCALE_UP", "High-performing campaign - increase budget significantly"
+                return "INCREASE_BUDGET", "High-performing campaign - increase budget significantly"
             elif cluster in [0, 1]:  # Medium performance clusters
                 if roi > -50:
                     return "OPTIMIZE", "Moderate performance - optimize targeting and creatives"
@@ -121,7 +121,7 @@ class DBSCANCampaignInference:
         # Add priority scoring
         priority_map = {
             'PAUSE': 1,      # Highest priority
-            'SCALE_UP': 2,   # High priority
+            'INCREASE_BUDGET': 2,   # High priority
             'REDUCE_BUDGET': 3,
             'OPTIMIZE': 4,
             'RESTRUCTURE': 5,
