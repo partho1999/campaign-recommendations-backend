@@ -17,6 +17,8 @@ import json
 from collections import defaultdict
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from dotenv import load_dotenv
+import os
 
 # Global state tracker for cycling state 0-7
 if not hasattr(settings, 'CAMPAIGN_STATE'):  # Only add if not present
@@ -27,7 +29,7 @@ class PredictCampaignsView(APIView):
     def get(self, request):
         try:
             # API config
-            api_key = 'c1da605a864e6c74beb71d3a713e019c'
+            api_key = os.getenv("API_KEY")
             base_url = "https://tracktheweb.online/admin_api/v1"
             all_data_items = []
 
