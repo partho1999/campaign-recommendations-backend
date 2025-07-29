@@ -20,7 +20,7 @@ class DBSCANCampaignInference:
         self.load_model()
         
     def load_model(self):
-        print(f"📦 Loading trained DBSCAN model from {self.model_path}...")
+        # print(f"📦 Loading trained DBSCAN model from {self.model_path}...")
         if not os.path.exists(self.model_path):
             raise FileNotFoundError(f"Model file not found: {self.model_path}")
         
@@ -29,13 +29,13 @@ class DBSCANCampaignInference:
         self.dbscan = self.model_bundle['dbscan']
         self.features = self.model_bundle['features']
         
-        print("✅ Model loaded successfully!")
-        print(f"   📊 Features: {self.features}")
-        print(f"   🎯 Best parameters: {self.model_bundle['best_params']}")
-        print(f"   📅 Training timestamp: {self.model_bundle['training_timestamp']}")
+        # print("✅ Model loaded successfully!")
+        # print(f"   📊 Features: {self.features}")
+        # print(f"   🎯 Best parameters: {self.model_bundle['best_params']}")
+        # print(f"   📅 Training timestamp: {self.model_bundle['training_timestamp']}")
         
     def preprocess_data(self, df):
-        print("\n🔧 Preprocessing data for inference...")
+        # print("\n🔧 Preprocessing data for inference...")
         numeric_cols = ['cost', 'revenue', 'profit', 'clicks', 'campaign_unique_clicks', 
                         'conversions', 'roi_confirmed', 'lp_clicks', 'cr', 'lp_ctr']
         for col in numeric_cols:
@@ -50,11 +50,11 @@ class DBSCANCampaignInference:
         if 'profit' in df.columns and 'cost' in df.columns:
             df['profit_margin'] = df['profit'] / (df['cost'] + 1e-6)
         
-        print(f"✅ Data preprocessed. Shape: {df.shape}")
+        # print(f"✅ Data preprocessed. Shape: {df.shape}")
         return df
     
     def extract_features(self, df):
-        print("\n📊 Extracting features...")
+        # print("\n📊 Extracting features...")
         feature_data = {}
         for feature in self.features:
             if feature in df.columns:
@@ -64,25 +64,25 @@ class DBSCANCampaignInference:
                 feature_data[feature] = np.zeros(len(df))
         
         X = pd.DataFrame(feature_data)
-        print(f"✅ Features extracted. Shape: {X.shape}")
-        print(f"   📋 Features: {list(X.columns)}")
+        # print(f"✅ Features extracted. Shape: {X.shape}")
+        # print(f"   📋 Features: {list(X.columns)}")
         return X
     
     def predict_clusters(self, X):
-        print("\n🎯 Predicting clusters...")
+        # print("\n🎯 Predicting clusters...")
         X_scaled = self.scaler.transform(X)
         labels = self.dbscan.fit_predict(X_scaled)
         n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
         n_noise = list(labels).count(-1)
         
-        print(f"✅ Clustering completed:")
-        print(f"   📊 Number of clusters: {n_clusters}")
-        print(f"   🔍 Noise points: {n_noise}")
-        print(f"   📈 Noise ratio: {n_noise/len(labels)*100:.1f}%")
+        # print(f"✅ Clustering completed:")
+        # print(f"   📊 Number of clusters: {n_clusters}")
+        # print(f"   🔍 Noise points: {n_noise}")
+        # print(f"   📈 Noise ratio: {n_noise/len(labels)*100:.1f}%")
         return labels
     
     def generate_recommendations(self, df, labels):
-        print("\n💡 Generating campaign recommendations...")
+        # print("\n💡 Generating campaign recommendations...")
         df_result = df.copy()
         df_result['cluster'] = labels
 
@@ -167,28 +167,28 @@ class DBSCANCampaignInference:
 
     
     def analyze_recommendations(self, df_result):
-        print("\n📈 Recommendation Analysis:")
+        # print("\n📈 Recommendation Analysis:")
         rec_summary = df_result['recommendation'].value_counts()
-        print("\n🎯 Recommendation Summary:")
+        # print("\n🎯 Recommendation Summary:")
         for rec_type, count in rec_summary.items():
             percentage = (count / len(df_result)) * 100
-            print(f"   {rec_type}: {count:,} campaigns ({percentage:.1f}%)")
+            # print(f"   {rec_type}: {count:,} campaigns ({percentage:.1f}%)")
         
         cluster_summary = df_result.groupby('cluster').agg({
             'roi_confirmed': ['mean', 'count'],
             'cost': 'sum',
             'revenue': 'sum'
         }).round(2)
-        print("\n📊 Cluster Performance Summary:")
-        print(cluster_summary)
+        # print("\n📊 Cluster Performance Summary:")
+        # print(cluster_summary)
         
         high_priority = df_result[df_result['priority'] <= 2]
         if not high_priority.empty:
-            print(f"\n🚨 High Priority Actions ({len(high_priority)} campaigns):")
+            # print(f"\n🚨 High Priority Actions ({len(high_priority)} campaigns):")
             for _, row in high_priority.head(10).iterrows():
                 campaign_name = row.get('campaign', f"Campaign {row.get('campaign_id', 'Unknown')}")
-                print(f"   • {row['recommendation']}: {campaign_name[:50]}...")
-                print(f"     ROI: {row.get('roi_confirmed', 0):.1f}%, Cost: ${row.get('cost', 0):.2f}")
+                # print(f"   • {row['recommendation']}: {campaign_name[:50]}...")
+                # print(f"     ROI: {row.get('roi_confirmed', 0):.1f}%, Cost: ${row.get('cost', 0):.2f}")
     
     def save_results(self, df_result, output_prefix='inference_results'):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -197,16 +197,16 @@ class DBSCANCampaignInference:
         json_path = f"{output_prefix}.json"
         df_result.to_json(json_path, orient='records', indent=2)
         
-        print(f"\n💾 Results saved:")
-        print(f"   📊 {csv_path}")
-        print(f"   📄 {json_path}")
+        # print(f"\n💾 Results saved:")
+        # print(f"   📊 {csv_path}")
+        # print(f"   📄 {json_path}")
         return csv_path, json_path
     
     
         
     def run_inference(self, data_source, save_results=True):
-        print("🚀 Starting DBSCAN Campaign Inference")
-        print("=" * 50)
+        # print("🚀 Starting DBSCAN Campaign Inference")
+        # print("=" * 50)
         
         if isinstance(data_source, str):
             if data_source.endswith('.json'):
@@ -223,7 +223,7 @@ class DBSCANCampaignInference:
         else:
             df = data_source.copy()
         
-        print(f"📂 Data loaded. Shape: {df.shape}")
+        # print(f"📂 Data loaded. Shape: {df.shape}")
         df_processed = self.preprocess_data(df)
         X = self.extract_features(df_processed)
         labels = self.predict_clusters(X)
@@ -240,25 +240,25 @@ def main():
     """Main function to run inference"""
     model_path = os.path.join(settings.MEDIA_ROOT, 'dbscan_model_bundle_latest.pkl')
     if not os.path.exists(model_path):
-        print(f"❌ Model file not found: {model_path}")
-        print("Please run the DBSCAN trainer first to generate the model.")
+        # print(f"❌ Model file not found: {model_path}")
+        # print("Please run the DBSCAN trainer first to generate the model.")
         return
 
     data_path =os.path.join(settings.MEDIA_ROOT, 'preprocess_data.json')
     if not os.path.exists(data_path):
-        print(f"❌ Data file not found: {data_path}")
-        print("Please run the downloader script first to generate the data.")
+        # print(f"❌ Data file not found: {data_path}")
+        # print("Please run the downloader script first to generate the data.")
         return
 
     try:
         inference = DBSCANCampaignInference(model_path)
         csv_path, json_path = inference.run_inference(data_path, save_results=True)
 
-        print(f"\n🎯 Next Steps:")
-        print(f"   1. Review high-priority recommendations")
-        print(f"   2. Implement suggested campaign actions")
-        print(f"   3. Monitor performance changes")
-        print(f"   4. Re-run inference periodically for updated recommendations")
+        # print(f"\n🎯 Next Steps:")
+        # print(f"   1. Review high-priority recommendations")
+        # print(f"   2. Implement suggested campaign actions")
+        # print(f"   3. Monitor performance changes")
+        # print(f"   4. Re-run inference periodically for updated recommendations")
 
         # Return saved JSON content
         with open(json_path, 'r', encoding='utf-8') as f:
@@ -266,7 +266,7 @@ def main():
         return saved_json
 
     except Exception as e:
-        print(f"❌ Error during inference: {str(e)}")
+        # print(f"❌ Error during inference: {str(e)}")
         raise
 
 # Uncomment to run directly
