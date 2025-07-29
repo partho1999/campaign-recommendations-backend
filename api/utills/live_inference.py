@@ -91,48 +91,62 @@ class DBSCANCampaignInference:
             roi = row.get('roi_confirmed', 0)
             cost = row.get('cost', 0)
 
-            # Early exit: not enough data
             if cost < 5:
                 return "KEEP_RUNNING", "Insufficient spend (<$5) - wait for more data"
 
-            # Cluster-based logic
-            if cluster == -1:  # Noise/Outlier
-                if roi > 0:
-                    return "MONITOR_CLOSELY", "Outlier with positive ROI - monitor closely"
-                else:
-                    return "PAUSE", "Outlier with poor performance - pause campaign"
-
-            elif cluster in [4, 5]:  # High-performance
+            # Handle noise/outliers (cluster -1)
+            if cluster == -1:
                 if roi > 1000:
                     return "INCREASE_BUDGET", "Exceptional ROI (>1000%) - increase budget by 200%"
                 elif roi > 300:
                     return "INCREASE_BUDGET", "Strong ROI (>300%) - increase budget by 100%"
                 elif roi > 100:
                     return "INCREASE_BUDGET", "Good ROI (>100%) - increase budget by 50%"
-                else:
+                elif roi > 0:
                     return "INCREASE_BUDGET", "Positive ROI - increase budget moderately (20%)"
-
-            elif cluster in [0, 1]:  # Medium performance
-                if roi > -50:
-                    return "OPTIMIZE", "Moderate performance - optimize targeting and creatives"
+                elif roi > -50:
+                    return "OPTIMIZE", "Outlier with slightly negative ROI - optimize campaign"
                 else:
-                    return "REDUCE_BUDGET", "Below average performance - reduce budget by 30-50%"
+                    return "PAUSE", "Outlier with poor performance - pause campaign"
 
-            elif cluster in [2, 3, 6]:  # Poor performance
+            # High performance clusters
+            if cluster in [4, 5]:
+                if roi > 1000:
+                    return "INCREASE_BUDGET", "Exceptional ROI (>1000%) - increase budget by 200%"
+                elif roi > 300:
+                    return "INCREASE_BUDGET", "Strong ROI (>300%) - increase budget by 100%"
+                elif roi > 100:
+                    return "INCREASE_BUDGET", "Good ROI (>100%) - increase budget by 50%"
+                elif roi > 0:
+                    return "INCREASE_BUDGET", "Positive ROI - increase budget moderately (20%)"
+                else:
+                    return "OPTIMIZE", "High performance cluster but no positive ROI - optimize campaign"
+
+            # Medium performance clusters
+            if cluster in [0, 1]:
+                if roi > 0:
+                    return "OPTIMIZE", "Moderate ROI - optimize targeting and creatives"
+                elif roi > -50:
+                    return "REDUCE_BUDGET", "Slightly negative ROI - reduce budget slightly"
+                else:
+                    return "REDUCE_BUDGET", "Negative ROI - reduce budget by 30-50%"
+
+            # Poor performance clusters
+            if cluster in [2, 3, 6]:
                 if cost > 100:
                     return "PAUSE", "High spend with poor ROI - pause immediately"
                 else:
                     return "RESTRUCTURE", "Poor performance - restructure campaign completely"
 
-            else:
-                return "REVIEW", "Unknown cluster - manual review required"
+            # Fallback for unknown clusters
+            return "REVIEW", "Unknown cluster - manual review required"
 
         # Apply recommendations
         recommendations = df_result.apply(get_recommendation, axis=1)
         df_result['recommendation'] = [rec[0] for rec in recommendations]
         df_result['reason'] = [rec[1] for rec in recommendations]
 
-        # Add priority scores
+        # Priority mapping
         priority_map = {
             'PAUSE': 1,
             'INCREASE_BUDGET': 2,
@@ -140,13 +154,17 @@ class DBSCANCampaignInference:
             'OPTIMIZE': 4,
             'RESTRUCTURE': 5,
             'KEEP_RUNNING': 6,
-            'REVIEW': 7
+            'MONITOR_CLOSELY': 7,
+            'REVIEW': 8
         }
-        df_result['priority'] = df_result['recommendation'].map(priority_map)
 
-        # Sort for best visibility
+        df_result['priority'] = df_result['recommendation'].map(priority_map).fillna(99)
         df_result = df_result.sort_values(['priority', 'roi_confirmed'], ascending=[True, False])
+
         return df_result
+
+
+
     
     def analyze_recommendations(self, df_result):
         print("\n📈 Recommendation Analysis:")
